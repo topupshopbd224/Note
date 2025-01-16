@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notebook</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js"></script>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: #4CAF50;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+.header h1 {
+    margin: 0;
+    color: white;
+    font-size: 24px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+}
+
+.logout-btn {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.logout-btn:hover {
+    background-color: #d32f2f;
+}
+
+.container {
+    padding: 20px;
+    text-align: center;
+    margin-top: 80px;  /* Adjusted to avoid overlap with header */
+    height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+textarea {
+    width: 100%;
+    max-width: 100%;
+    height: calc(100vh - 180px);  /* Adjust height to take most of the screen */
+    margin-bottom: 20px;
+    resize: none;
+    font-size: 16px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box; /* Ensures padding doesn't overflow */
+}
+
+button {
+    padding: 10px;
+    margin: 10px;
+    width: 200px;
+    cursor: pointer;
+}
+
+#notesList {
+    text-align: left;
+    margin-top: 20px;
+}
+
+.note-item {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.note-item button {
+    margin-left: 10px;
+}
+
+.loading {
+    font-size: 18px;
+    font-weight: bold;
+    color: #888;
+}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Notebook</h1>
+        <div class="user-info">
+            <span id="user-initial" class="user-initial"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="container">
+        <textarea id="note" placeholder="Write your notes here..."></textarea><br />
+        <input type="text" id="noteTitle" placeholder="Note Title"><br />
+        <button onclick="saveNote()">Save Note</button>
+        <button onclick="loadNotes()">Load Notes</button>
+        <div id="notesList" class="loading">...</div>
+        <footer style="text-align: center; margin-top: 30px; color: #333;">
+  <i>Development by Rakib and Girlfriend Riya</i>
+</footer>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+        import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvBGHmp1Dyal6rKem84Fb_d_ZDR8rRZkY",
+            authDomain: "notebook-c1393.firebaseapp.com",
+            databaseURL: "https://notebook-c1393-default-rtdb.firebaseio.com",
+            projectId: "notebook-c1393",
+            storageBucket: "notebook-c1393.appspot.com",
+            messagingSenderId: "114905648375",
+            appId: "1:114905648375:web:88c0f9a3499e36c1f0d7f2",
+            measurementId: "G-7NN004YHFH"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+    if (user) {
+        currentUser = user;
+        // Show full Gmail name excluding "@gmail.com"
+        document.getElementById("user-initial").innerText = user.email.split('@')[0];  
+    } else {
+        alert("You are not logged in.");
+        window.location.href = "index.html";
+    }
+});
+
+        window.saveNote = function () {
+            const title = document.getElementById("noteTitle").value;
+            const note = document.getElementById("note").value;
+
+            if (!title || !note) {
+                alert("Please provide both a title and note before saving.");
+                return;
+            }
+
+            if (currentUser) {
+                const userId = currentUser.uid;
+                const notesRef = ref(database, `notes/${userId}`);
+                const newNoteRef = child(notesRef, new Date().getTime().toString());  // Generate unique key based on timestamp
+                set(newNoteRef, { title: title, content: note, timestamp: new Date().toLocaleString() })
+                    .then(() => {
+                        alert("Note saved successfully!");
+                        loadNotes(); // Reload notes after saving
+                    })
+                    .catch((error) => {
+                        alert("Error saving note: " + error.message);
+                    });
+            }
+        };
+
+        window.loadNotes = function() {
+  if (currentUser) {
+    const userId = currentUser.uid;
+    const notesRef = ref(database, `notes/${userId}`);
+    get(notesRef)
+      .then((snapshot) => {
+        const notesList = document.getElementById("notesList");
+        notesList.innerHTML = ""; // Clear the list before adding new notes
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            const noteId = childSnapshot.key;
+            const noteTitle = childSnapshot.val().title;
+            const noteContent = childSnapshot.val().content;
+            const noteTimestamp = childSnapshot.val().timestamp;
+
+            // Get the first two words from the note content
+            const previewContent = noteContent.split(" ").slice(0, 2).join(" ");
+
+            const li = document.createElement("li");
+            li.className = "note-item";
+            li.innerHTML = `
+                            <h3>${noteTitle}</h3>
+                            <p>${previewContent} <small>(${noteTimestamp})</small></p>
+                            <button class="edit-btn" onclick="editNote('${noteId}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteNote('${noteId}')">Delete</button>
+                        `;
+            notesList.appendChild(li);
+          });
+        } else {
+          notesList.innerHTML = "No notes found.";
+        }
+      })
+      .catch((error) => {
+        alert("Error loading notes: " + error.message);
+      });
+  }
+};
+
+        window.deleteNote = function (noteId) {
+            if (currentUser) {
+                const noteRef = ref(database, `notes/${currentUser.uid}/${noteId}`);
+                remove(noteRef)
+                    .then(() => {
+                        alert("Note deleted successfully!");
+                        loadNotes(); // Reload notes after deleting
+                    })
+                    .catch((error) => {
+                        alert("Error deleting note: " + error.message);
+                    });
+            }
+        };
+
+// Detect when the keyboard is shown and resize the textarea accordingly
+let originalHeight = document.documentElement.clientHeight;
+
+window.addEventListener('resize', function() {
+    if (document.documentElement.clientHeight < originalHeight) {
+        // When keyboard is visible, reduce other elements' size and give more space to the textarea
+        document.querySelector('textarea').style.height = `${document.documentElement.clientHeight - 120}px`; // Adjust based on your layout
+    } else {
+        // Reset when the keyboard is hidden
+        document.querySelector('textarea').style.height = `calc(100vh - 180px)`;
+    }
+});
+        window.editNote = function (noteId) {
+            const noteRef = ref(database, `notes/${currentUser.uid}/${noteId}`);
+            get(noteRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const noteTitle = snapshot.val().title;
+                    const noteContent = snapshot.val().content;
+
+                    document.getElementById("noteTitle").value = noteTitle;
+                    document.getElementById("note").value = noteContent;
+                }
+            }).catch((error) => {
+                alert("Error loading note: " + error.message);
+            });
+        };
+
+        window.logout = function () {
+            signOut(auth).then(() => {
+                alert("You have been logged out.");
+                window.location.href = "index.html";  // Redirect to login page after logout
+            }).catch((error) => {
+                alert("Error logging out: " + error.message);
+            });
+        };
+    </script>
+</body>
+</html>

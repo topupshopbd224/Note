@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5af19, #f12711);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            padding: 12px;
+            margin: 12px 0;
+            width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        input:focus, button:hover {
+            border-color: #f12711;
+            outline: none;
+            background-color: #f5af19;
+        }
+
+        button {
+            display: flex;
+            text-align:center;
+            align-items: center;
+            padding: 12px;
+            margin: 12px 0;
+            width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #f5f5f5;
+        }
+
+        button img {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+
+        p {
+            color: #666;
+        }
+
+        a {
+            color: #f12711;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-password {
+            font-size: 14px;
+        }
+
+        .form-toggle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        h2 {
+            color: black;
+        }
+
+        #google-login-btn {
+            background-color: #4285f4;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        #google-login-btn:hover {
+            background-color: #357ae8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ONLINE NOTEBOOK</h1>
+        <div id="login-form">
+            <h2>Login</h2>
+            <input type="email" id="login-email" placeholder="Enter your email" required />
+            <input type="password" id="login-password" placeholder="Enter your password" required />
+            <button onclick="login()">Login</button>
+            <p class="forgot-password"><a href="#" onclick="showResetPassword()">Forgot Password?</a></p>
+            <p>Don't have an account? <a href="#" onclick="showSignUp()">Sign Up</a></p>
+
+            <!-- Google Login Button -->
+            <button id="google-login-btn">
+                <img src="./google.png" alt="Google Logo" style="width: 30px; height: 30px; margin-right: 40px;">
+                Sign in with Google
+            </button>
+        </div>
+
+        <div id="signup-form" style="display: none;">
+            <h2>Sign Up</h2>
+            <input type="text" id="name" placeholder="Enter your name" required />
+            <input type="email" id="signup-email" placeholder="Enter your email" required />
+            <input type="password" id="signup-password" placeholder="Enter your password" required />
+            <button onclick="signUp()">Sign Up</button>
+            <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+        </div>
+
+        <div id="reset-password-form" style="display: none;">
+            <h2>Reset Password</h2>
+            <input type="email" id="reset-email" placeholder="Enter your email" required />
+            <button onclick="resetPassword()">Reset Password</button>
+            <p><a href="#" onclick="showLogin()">Back to Login</a></p>
+        </div>
+        <footer style="text-align: center; margin-top: 30px; color: #333;">
+  <b>Development by Rakib and Girlfriend Riya</b>
+</footer>
+    </div>
+    
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvBGHmp1Dyal6rKem84Fb_d_ZDR8rRZkY",
+            authDomain: "notebook-c1393.firebaseapp.com",
+            databaseURL: "https://notebook-c1393-default-rtdb.firebaseio.com",
+            projectId: "notebook-c1393",
+            storageBucket: "notebook-c1393.appspot.com",
+            messagingSenderId: "114905648375",
+            appId: "1:114905648375:web:88c0f9a3499e36c1f0d7f2",
+            measurementId: "G-7NN004YHFH"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        window.showSignUp = function () {
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("signup-form").style.display = "block";
+            document.getElementById("reset-password-form").style.display = "none";
+        };
+
+        window.showLogin = function () {
+            document.getElementById("signup-form").style.display = "none";
+            document.getElementById("login-form").style.display = "block";
+            document.getElementById("reset-password-form").style.display = "none";
+        };
+
+        window.showResetPassword = function () {
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("reset-password-form").style.display = "block";
+        };
+
+        window.signUp = async function () {
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("signup-email").value;
+            const password = document.getElementById("signup-password").value;
+
+            if (!name || !email || !password) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                await updateProfile(user, { displayName: name });
+                alert(`Sign up successful! Welcome, ${name}`);
+                showLogin();
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        window.login = async function () {
+            const email = document.getElementById("login-email").value;
+            const password = document.getElementById("login-password").value;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                alert("Login successful!");
+                window.location.href = "dashboard.html";
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        window.resetPassword = async function () {
+            const email = document.getElementById("reset-email").value;
+
+            if (!email) {
+                alert("Please enter your email.");
+                return;
+            }
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert("Password reset email sent! Check your inbox.");
+                showLogin();
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        // Google Sign-In Functionality
+        document.getElementById("google-login-btn").addEventListener("click", async () => {
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                alert(`Google login successful! Welcome, ${user.displayName}`);
+                window.location.href = "dashboard.html";
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+    </script>
+    
+</body>
+</html>
